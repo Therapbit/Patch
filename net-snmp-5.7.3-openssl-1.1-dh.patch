@@ -3,32 +3,23 @@ From: Local Yocto migration <local@invalid>
 Date: Wed, 19 Aug 2026 00:00:00 +0000
 Subject: [PATCH] net-snmp: port snmpusm DH access to OpenSSL 1.1
 
-OpenSSL 1.1 makes struct DH opaque.  Access p, g and the public key
+OpenSSL 1.1 makes struct DH opaque. Access p, g and the public key
 through DH_get0_pqg() and DH_get0_key() instead of dereferencing
 DH fields directly.
 
-The change follows the OpenSSL 1.1 port used by upstream net-snmp.
-
 Upstream-Status: Backport
 
----
- apps/snmpusm.c | 20 ++++++++++++--------
- 1 file changed, 12 insertions(+), 8 deletions(-)
-
-diff --git a/apps/snmpusm.c b/apps/snmpusm.c
 --- a/apps/snmpusm.c
 +++ b/apps/snmpusm.c
-@@ -190,7 +190,8 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
+@@ -4,6 +4,7 @@
                 oid *keyoid, size_t keyoid_len) {
      u_char *dhkeychange;
      DH *dh;
--    BIGNUM *other_pub;
 +    const BIGNUM *p, *g, *pub_key;
-+    BIGNUM *other_pub;
+     BIGNUM *other_pub;
      u_char *key;
      size_t key_len;
- 
-@@ -205,25 +206,29 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
+@@ -19,25 +20,29 @@
          dh = d2i_DHparams(NULL, &cp, dhvar->val_len);
      }
  
@@ -61,9 +52,6 @@ diff --git a/apps/snmpusm.c b/apps/snmpusm.c
  
 -    BN_bn2bin(dh->pub_key, dhkeychange + vars->val_len);
 +    BN_bn2bin(pub_key, dhkeychange + vars->val_len);
-+
+ 
      key_len = DH_size(dh);
      if (!key_len) {
-         SNMP_FREE(dhkeychange);
--- 
-2.17.1
