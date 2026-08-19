@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Local Yocto migration <local@invalid>
+Date: Wed, 19 Aug 2026 00:00:00 +0000
+Subject: [PATCH] powerpc/vdso64: use double word compare on pointers
+
+The vdso64 code compares 64-bit pointers. Use cmpldi instead of cmpli
+so newer binutils do not interpret the register operand as the L field
+and reject it with errors such as:
+
+  invalid register expression
+  operand out of range (4 is not between 0 and 1)
+
+Backport the upstream PowerPC fix to the older QorIQ kernel.
+
+Upstream-Status: Backport
+
+---
+ arch/powerpc/kernel/vdso64/datapage.S     | 2 +-
+ arch/powerpc/kernel/vdso64/gettimeofday.S | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/powerpc/kernel/vdso64/gettimeofday.S b/arch/powerpc/kernel/vdso64/gettimeofday.S
+--- a/arch/powerpc/kernel/vdso64/gettimeofday.S
++++ b/arch/powerpc/kernel/vdso64/gettimeofday.S
+@@ -145,7 +145,7 @@ V_FUNCTION_BEGIN(__kernel_clock_getres)
+ 	bne	cr0,99f
+ 	li	r3,0
+-	cmpli	cr0,r4,0
++	cmpldi	cr0,r4,0
+ 	crclr	cr0*4+so
+ 	beqlr
+ 	lis	r5,CLOCK_REALTIME_RES@h
+
+diff --git a/arch/powerpc/kernel/vdso64/datapage.S b/arch/powerpc/kernel/vdso64/datapage.S
+--- a/arch/powerpc/kernel/vdso64/datapage.S
++++ b/arch/powerpc/kernel/vdso64/datapage.S
+@@ -57,7 +57,7 @@ V_FUNCTION_BEGIN(__kernel_get_syscall_map)
+ 	bl	V_LOCAL_FUNC(__get_datapage)
+ 	mtlr	r12
+ 	addi	r3,r3,CFG_SYSCALL_MAP64
+-	cmpli	cr0,r4,0
++	cmpldi	cr0,r4,0
+ 	crclr	cr0*4+so
+ 	beqlr
+ 	li	r0,__NR_syscalls
+-- 
+2.17.1
