@@ -7,34 +7,34 @@ OpenSSL 1.1 makes struct DH opaque. Access p, g and the public key
 through DH_get0_pqg() and DH_get0_key() instead of dereferencing
 DH fields directly.
 
-Use zero-context hunks so this backport applies to the Freescale
-net-snmp 5.7.3 source tree despite local formatting differences.
-
 Upstream-Status: Backport
 
 --- a/apps/snmpusm.c
 +++ b/apps/snmpusm.c
-@@ -1,0 +2 @@
+@@ -190,3 +190,4 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
+     u_char *dhkeychange;
+     DH *dh;
 +    const BIGNUM *p, *g, *pub_key;
-@@ -17 +18,4 @@
+     BIGNUM *other_pub;
+@@ -205 +206,4 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
 -    if (!dh || !dh->g || !dh->p) {
 +    if (dh)
 +        DH_get0_pqg(dh, &p, NULL, &g);
 +
 +    if (!dh || !g || !p) {
-@@ -22,2 +26 @@
+@@ -210,2 +214 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
 -    DH_generate_key(dh);
 -    if (!dh->pub_key) {
 +    if (!DH_generate_key(dh)) {
-@@ -28 +31,3 @@
+@@ -216 +219,3 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
 -    if (vars->val_len != (unsigned int)BN_num_bytes(dh->pub_key)) {
 +    DH_get0_key(dh, &pub_key, NULL);
 +
 +    if (vars->val_len != (unsigned int)BN_num_bytes(pub_key)) {
-@@ -31 +36 @@
+@@ -219 +224 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
 -                (unsigned long)vars->val_len, BN_num_bytes(dh->pub_key));
 +                (unsigned long)vars->val_len, BN_num_bytes(pub_key));
-@@ -35 +40 @@
+@@ -223 +228 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
 -    BN_bn2bin(dh->pub_key, dhkeychange + vars->val_len);
 +    BN_bn2bin(pub_key, dhkeychange + vars->val_len);
 -- 
