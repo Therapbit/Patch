@@ -28,7 +28,7 @@ diff --git a/apps/snmpusm.c b/apps/snmpusm.c
      u_char *key;
      size_t key_len;
  
-@@ -205,25 +206,28 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
+@@ -205,25 +206,29 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
          dh = d2i_DHparams(NULL, &cp, dhvar->val_len);
      }
  
