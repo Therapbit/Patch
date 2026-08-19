@@ -1,0 +1,69 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Local Yocto migration <local@invalid>
+Date: Wed, 19 Aug 2026 00:00:00 +0000
+Subject: [PATCH] net-snmp: port snmpusm DH access to OpenSSL 1.1
+
+OpenSSL 1.1 makes struct DH opaque.  Access p, g and the public key
+through DH_get0_pqg() and DH_get0_key() instead of dereferencing
+DH fields directly.
+
+The change follows the OpenSSL 1.1 port used by upstream net-snmp.
+
+Upstream-Status: Backport
+
+---
+ apps/snmpusm.c | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/apps/snmpusm.c b/apps/snmpusm.c
+--- a/apps/snmpusm.c
++++ b/apps/snmpusm.c
+@@ -190,7 +190,8 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
+                oid *keyoid, size_t keyoid_len) {
+     u_char *dhkeychange;
+     DH *dh;
+-    BIGNUM *other_pub;
++    const BIGNUM *p, *g, *pub_key;
++    BIGNUM *other_pub;
+     u_char *key;
+     size_t key_len;
+ 
+@@ -205,25 +206,28 @@ get_USM_DH_key(netsnmp_variable_list *vars, netsnmp_variable_list *dhvar,
+         dh = d2i_DHparams(NULL, &cp, dhvar->val_len);
+     }
+ 
+-    if (!dh || !dh->g || !dh->p) {
++    if (dh)
++        DH_get0_pqg(dh, &p, NULL, &g);
++
++    if (!dh || !g || !p) {
+         SNMP_FREE(dhkeychange);
+         return SNMPERR_GENERR;
+     }
+ 
+-    DH_generate_key(dh);
+-    if (!dh->pub_key) {
++    if (!DH_generate_key(dh)) {
+         SNMP_FREE(dhkeychange);
+         return SNMPERR_GENERR;
+     }
+ 
+-    if (vars->val_len != (unsigned int)BN_num_bytes(dh->pub_key)) {
++    DH_get0_key(dh, &pub_key, NULL);
++
++    if (vars->val_len != (unsigned int)BN_num_bytes(pub_key)) {
+         SNMP_FREE(dhkeychange);
+         fprintf(stderr,"incorrect diffie-helman lengths (%lu != %d)\n",
+-                (unsigned long)vars->val_len, BN_num_bytes(dh->pub_key));
++                (unsigned long)vars->val_len, BN_num_bytes(pub_key));
+         return SNMPERR_GENERR;
+     }
+ 
+-    BN_bn2bin(dh->pub_key, dhkeychange + vars->val_len);
++    BN_bn2bin(pub_key, dhkeychange + vars->val_len);
++
+     key_len = DH_size(dh);
+     if (!key_len) {
+         SNMP_FREE(dhkeychange);
+-- 
+2.17.1
