@@ -1,0 +1,30 @@
+From: ChatGPT <noreply@openai.com>
+Subject: [PATCH] tcpdump: treat PCAP_CONFIG=no as not found
+
+When cross-compiling under Yocto, AC_PATH_TOOL can leave PCAP_CONFIG set
+to the literal string "no".  tcpdump 4.3.0 only checks whether the
+variable is non-empty and then attempts to execute it, resulting in:
+
+  ./configure: ...: no: command not found
+
+Normalize the value "no" to an empty string so the existing fallback to
+AC_CHECK_LIB(pcap, ...) is used.
+
+---
+ aclocal.m4 | 3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -1,6 +1,9 @@
+ 	    # Look for pcap-config.
+ 	    #
+ 	    AC_PATH_TOOL(PCAP_CONFIG, pcap-config)
++	    if test "x$PCAP_CONFIG" = "xno"; then
++		PCAP_CONFIG=
++	    fi
+ 	    if test -n "$PCAP_CONFIG" ; then
+ 		#
+ 		# Found - use it to get the include flags for
+-- 
+2.17.1
